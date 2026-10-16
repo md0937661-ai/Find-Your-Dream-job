@@ -434,41 +434,69 @@ export const updateProfile = async (req, res) => {
 
     // Profile Photo
     if (req.files && req.files['profilePhoto']) {
+      if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+        return res.status(500).json({
+          message: 'Cloudinary credentials missing in .env. Please configure CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.',
+          success: false,
+        });
+      }
       const photoFile = req.files['profilePhoto'][0];
-      const result = await new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          {
-            folder: 'job-portal/profiles',
-            resource_type: 'image',
-          },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-        stream.end(photoFile.buffer);
-      });
-      user.profile.profilePhoto = result.secure_url;
+      try {
+        const result = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            {
+              folder: 'job-portal/profiles',
+              resource_type: 'image',
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          stream.end(photoFile.buffer);
+        });
+        user.profile.profilePhoto = result.secure_url;
+      } catch (uploadError) {
+        console.error('Cloudinary Profile Photo Upload Error:', uploadError.message || uploadError);
+        return res.status(500).json({
+          message: `Profile photo upload failed: ${uploadError.message || 'Cloudinary error'}`,
+          success: false,
+        });
+      }
     }
 
     // Resume
     if (req.files && req.files['resume']) {
+      if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+        return res.status(500).json({
+          message: 'Cloudinary credentials missing in .env. Please configure CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.',
+          success: false,
+        });
+      }
       const resumeFile = req.files['resume'][0];
-      const result = await new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          {
-            folder: 'job-portal/resumes',
-            resource_type: 'raw',
-          },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-        stream.end(resumeFile.buffer);
-      });
-      user.profile.resume = result.secure_url;
-      user.profile.resumeOriginalName = resumeFile.originalname;
+      try {
+        const result = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            {
+              folder: 'job-portal/resumes',
+              resource_type: 'raw',
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          stream.end(resumeFile.buffer);
+        });
+        user.profile.resume = result.secure_url;
+        user.profile.resumeOriginalName = resumeFile.originalname;
+      } catch (uploadError) {
+        console.error('Cloudinary Resume Upload Error:', uploadError.message || uploadError);
+        return res.status(500).json({
+          message: `Resume upload failed: ${uploadError.message || 'Cloudinary error'}`,
+          success: false,
+        });
+      }
     }
 
     await user.save();

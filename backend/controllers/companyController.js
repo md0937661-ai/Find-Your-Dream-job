@@ -149,20 +149,34 @@ export const updateCompany = async (req, res) => {
     // Logo Upload — Cloudinary
     // ─────────────────────────────────────────
     if (req.file) {
-      const result = await new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          {
-            folder: 'job-portal/logos',
-            resource_type: 'image',
-          },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-        stream.end(req.file.buffer);
-      });
-      updateData.logo = result.secure_url;
+      if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+        return res.status(500).json({
+          message: 'Cloudinary credentials missing in .env. Please configure CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.',
+          success: false,
+        });
+      }
+      try {
+        const result = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            {
+              folder: 'job-portal/logos',
+              resource_type: 'image',
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          stream.end(req.file.buffer);
+        });
+        updateData.logo = result.secure_url;
+      } catch (uploadError) {
+        console.error('Cloudinary Logo Upload Error:', uploadError.message || uploadError);
+        return res.status(500).json({
+          message: `Logo upload failed: ${uploadError.message || 'Cloudinary error'}`,
+          success: false,
+        });
+      }
     }
 
     // const company = await Company.findByIdAndUpdate(
